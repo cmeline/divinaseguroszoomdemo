@@ -1,0 +1,38 @@
+SKILL TEMPORAL DE DIAGNÓSTICO  (borrar o desactivar antes de entregar la demo)
+=============================================================================
+
+Nombre del skill:  Diagnóstico simulación
+
+Cuándo activarlo (descripción / trigger):
+  Solo cuando la persona diga exactamente "modo diagnóstico" o "diagnóstico de simulación".
+  No activarlo con ninguna otra frase.
+
+Instrucciones del skill (pegar en el campo de instrucciones):
+  ---
+  Esta es una función interna de pruebas. Responde de forma breve y clara, en español,
+  leyendo en voz alta las tres variables de simulación.
+
+  Los valores actuales son:
+  - Simulación activa (ByPassSystemDate): [INSERTAR con "/" -> Variable ->
+    global_custom.zcc_call_control.ByPassSystemDate]
+  - Fecha (date): [INSERTAR con "/" -> Variable -> global_custom.zcc_call_control.date]
+  - Hora (hour): [INSERTAR con "/" -> Variable -> global_custom.zcc_call_control.hour]
+
+  Si la simulación activa es "true", di: "La simulación está activada. La fecha es <fecha>
+  y la hora es <hora>."
+  Si es "false" o está vacía, di: "La simulación está desactivada. Estoy usando la fecha y
+  hora reales."
+  Si falta la fecha o la hora estando la simulación activada, di: "La simulación está
+  activada pero faltan datos. Revisa el formulario."
+
+  Después de responder, no sigas con ninguna otra acción.
+  ---
+
+Notas:
+  - Los marcadores [INSERTAR ...] se sustituyen por la variable real con el menú "/" del editor,
+    igual que en el Greeting action.
+  - Si el bot dice "false" justo después de guardar la simulación en el formulario, mira el
+    indicador "Última lectura del bot" del formulario: si no se ha movido, el Greeting action
+    no está llegando a la API.
+  - Para quitarlo: borrar el skill (o su frase de activación) y repetir una llamada con la
+    simulación activada y otra apagada.

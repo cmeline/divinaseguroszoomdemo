@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulador de fecha y hora · Divina Seguros</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    color-scheme: light;
+    --ink: #262023;
+    --grey: #54545b;
+    --line: #e4e1de;
+    --field: #f6f4f2;
+    --orange: #ed8b00;
+    --salmon: #f29a79;
+    --salmon-dark: #e8825c;
+    --ok: #3b8f4a;
+    --error: #c23a1d;
+    --font: "Montserrat", "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: #fff;
+    color: var(--ink);
+    font-family: var(--font);
+    font-size: 16px;
+    line-height: 1.5;
+  }
+  header {
+    display: flex;
+    align-items: center;
+    padding: 20px clamp(20px, 5vw, 56px);
+  }
+  header img { height: 40px; width: auto; display: block; }
+  .strip { display: flex; height: 8px; }
+  .strip span { flex: 1; }
+  main {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 40px 20px 72px;
+  }
+  h1 {
+    margin: 0 0 8px;
+    font-size: clamp(26px, 5vw, 32px);
+    line-height: 1.15;
+    font-weight: 700;
+    color: var(--grey);
+    letter-spacing: -0.01em;
+  }
+  .lead { margin: 0 0 28px; color: var(--grey); max-width: 52ch; }
+
+  /* Lo que usará la demo ahora mismo */
+  .readout {
+    background: var(--ink);
+    color: #fff;
+    padding: 22px 24px 24px;
+    margin-bottom: 28px;
+  }
+  .readout-label {
+    display: flex; align-items: center; gap: 10px;
+    margin: 0 0 10px;
+    font-size: 14px; color: #cfc9c6;
+  }
+  .dot { width: 12px; height: 12px; border-radius: 50%; background: #8a8584; flex: none; }
+  .readout.sim .dot { background: var(--orange); }
+  .readout-value { margin: 0; font-size: clamp(20px, 4.4vw, 26px); font-weight: 700; line-height: 1.25; }
+  .readout-value .time { color: var(--salmon); }
+
+  form { border: 1px solid var(--line); padding: 24px; }
+  .switch-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    padding-bottom: 20px; margin-bottom: 20px; border-bottom: 1px solid var(--line);
+  }
+  .switch-row label { font-weight: 600; cursor: pointer; }
+  .switch-row small { display: block; font-weight: 400; color: var(--grey); }
+  .switch { position: relative; width: 52px; height: 30px; flex: none; }
+  .switch input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; z-index: 1; }
+  .track { position: absolute; inset: 0; border-radius: 15px; background: #c9c5c2; transition: background .15s; }
+  .track::after {
+    content: ""; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px;
+    border-radius: 50%; background: #fff; transition: transform .15s;
+  }
+  .switch input:checked + .track { background: var(--orange); }
+  .switch input:checked + .track::after { transform: translateX(22px); }
+  .switch input:focus-visible + .track { outline: 3px solid var(--ink); outline-offset: 3px; }
+
+  .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; transition: opacity .15s; }
+  .fields.off { opacity: .5; }
+  .field label { display: block; margin-bottom: 6px; font-size: 14px; font-weight: 600; color: var(--grey); }
+  .field input {
+    width: 100%; height: 48px; padding: 0 14px;
+    font: inherit; color: var(--ink);
+    background: var(--field); border: 2px solid transparent; border-radius: 6px;
+  }
+  .field input:focus-visible { outline: none; border-color: var(--orange); background: #fff; }
+
+  .daytag { margin: 14px 0 0; min-height: 24px; font-size: 14px; color: var(--grey); }
+  .daytag .badge {
+    display: inline-block; margin-left: 8px; padding: 2px 10px; border-radius: 999px;
+    font-size: 13px; font-weight: 600; color: var(--ink); background: var(--field);
+  }
+  .daytag .badge.holiday { background: #fde3d6; }
+  .daytag .badge.weekend { background: #dff1ef; }
+  .daytag-note { margin: 4px 0 0; font-size: 13px; color: #77777d; }
+  .botread { margin: 14px 0 0; font-size: 13px; color: #cfc9c6; }
+
+  .presets { margin-top: 22px; }
+  .presets p { margin: 0 0 10px; font-size: 14px; font-weight: 600; color: var(--grey); }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    font: inherit; font-size: 14px; color: var(--ink);
+    padding: 8px 14px; background: #fff; border: 1.5px solid var(--line); border-radius: 999px; cursor: pointer;
+  }
+  .chip:hover { border-color: var(--orange); }
+  .chip:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+
+  .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
+  .btn {
+    font: inherit; font-weight: 700; height: 50px; padding: 0 24px; border-radius: 6px; cursor: pointer;
+    border: 2px solid var(--ink);
+  }
+  .btn:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+  .btn.primary { background: var(--salmon); border-color: var(--salmon); color: var(--ink); }
+  .btn.primary:hover { background: var(--salmon-dark); border-color: var(--salmon-dark); }
+  .btn.secondary { background: #fff; color: var(--ink); }
+  .btn.secondary:hover { background: var(--field); }
+  .btn[disabled] { opacity: .6; cursor: wait; }
+
+  .msg { min-height: 24px; margin: 16px 0 0; font-size: 14px; font-weight: 600; }
+  .msg.ok { color: var(--ok); }
+  .msg.error { color: var(--error); }
+
+  .note { margin: 24px 0 0; font-size: 14px; color: var(--grey); }
+
+  @media (max-width: 480px) {
+    .fields { grid-template-columns: 1fr; }
+    form { padding: 18px; }
+    .btn { width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <img src="logo.png" alt="Divina Seguros">
+</header>
+<div class="strip" aria-hidden="true">
+  <span style="background:#57bab1"></span><span style="background:#dd502f"></span><span style="background:#00b2e1"></span>
+  <span style="background:#f9b208"></span><span style="background:#92c581"></span><span style="background:#f29a79"></span>
+  <span style="background:#3082ac"></span><span style="background:#57bab1"></span><span style="background:#dd502f"></span>
+</div>
+
+<main>
+  <h1>Simulador de fecha y hora</h1>
+  <p class="lead">Elige el momento que el asistente virtual debe tomar como «ahora» para decidir el enrutamiento de la llamada.</p>
+
+  <section class="readout" id="readout" aria-live="polite">
+    <p class="readout-label"><span class="dot"></span><span id="readoutLabel">Cargando…</span></p>
+    <p class="readout-value" id="readoutValue">&nbsp;</p>
+    <p class="botread" id="botRead"></p>
+  </section>
+
+  <form id="form" novalidate>
+    <div class="switch-row">
+      <label for="bypass">
+        Simular fecha y hora
+        <small>Si lo apagas, el asistente usa la fecha y hora reales.</small>
+      </label>
+      <span class="switch">
+        <input type="checkbox" id="bypass" role="switch">
+        <span class="track"></span>
+      </span>
+    </div>
+
+    <div class="fields" id="fields">
+      <div class="field">
+        <label for="date">Fecha</label>
+        <input type="date" id="date" required>
+      </div>
+      <div class="field">
+        <label for="hour">Hora</label>
+        <input type="time" id="hour" step="1" required>
+      </div>
+    </div>
+
+    <p class="daytag" id="dayTag" aria-live="polite"></p>
+    <p class="daytag-note">Solo marca festivos nacionales evidentes. No incluye festivos locales ni autonómicos.</p>
+
+    <div class="presets">
+      <p>Atajos</p>
+      <div class="chips" id="chips"></div>
+    </div>
+
+    <div class="actions">
+      <button type="submit" class="btn primary" id="save">Guardar y aplicar</button>
+      <button type="button" class="btn secondary" id="reset">Volver a la hora real</button>
+    </div>
+    <p class="msg" id="msg" role="status"></p>
+  </form>
+
+  <p class="note">Este ajuste afecta a todas las llamadas a la demo, no solo a la tuya. Los cambios se aplican a la siguiente llamada.</p>
+</main>
+
+<script>
+(function () {
+  var API = "/api/simulacion";
+  var TZ = "Europe/Madrid";
+
+  var $ = function (id) { return document.getElementById(id); };
+  var el = {
+    bypass: $("bypass"), date: $("date"), hour: $("hour"), fields: $("fields"),
+    form: $("form"), save: $("save"), reset: $("reset"), msg: $("msg"), chips: $("chips"),
+    readout: $("readout"), readoutLabel: $("readoutLabel"), readoutValue: $("readoutValue"),
+    dayTag: $("dayTag"), botRead: $("botRead")
+  };
+
+  /* ---------- fechas ---------- */
+  function madridNow() {
+    var parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23"
+    }).formatToParts(new Date());
+    var g = function (t) { return parts.filter(function (p) { return p.type === t; })[0].value; };
+    return { date: g("year") + "-" + g("month") + "-" + g("day"), hour: g("hour") + ":" + g("minute") + ":" + g("second") };
+  }
+  function addDays(iso, n) {
+    var d = new Date(iso + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10);
+  }
+  function nextWeekday(dow) {
+    var today = madridNow().date;
+    var cur = new Date(today + "T00:00:00Z").getUTCDay();
+    var diff = ((dow - cur + 7) % 7) || 7;
+    return addDays(today, diff);
+  }
+  function nextFixed(mm, dd) {
+    var today = madridNow().date, y = parseInt(today.slice(0, 4), 10);
+    var c = y + "-" + mm + "-" + dd;
+    return c <= today ? (y + 1) + "-" + mm + "-" + dd : c;
+  }
+  function longDate(iso) {
+    return new Intl.DateTimeFormat("es-ES", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })
+      .format(new Date(iso + "T00:00:00Z"));
+  }
+
+  /* ---------- atajos ---------- */
+  var presets = [
+    { label: "Laborable por la mañana", date: function () { return nextWeekday(1); }, hour: "10:00:00" },
+    { label: "Laborable de madrugada",  date: function () { return nextWeekday(2); }, hour: "03:00:00" },
+    { label: "Sábado a mediodía",       date: function () { return nextWeekday(6); }, hour: "12:00:00" },
+    { label: "Navidad",                 date: function () { return nextFixed("12", "25"); }, hour: "10:00:00" },
+    { label: "Año Nuevo",               date: function () { return nextFixed("01", "01"); }, hour: "10:00:00" },
+    { label: "Ahora mismo",             date: function () { return madridNow().date; }, hour: function () { return madridNow().hour; } }
+  ];
+  presets.forEach(function (p) {
+    var b = document.createElement("button");
+    b.type = "button"; b.className = "chip"; b.textContent = p.label;
+    b.addEventListener("click", function () {
+      el.date.value = p.date();
+      el.hour.value = typeof p.hour === "function" ? p.hour() : p.hour;
+      el.bypass.checked = true; syncFields(); updateDayTag(); setMsg("");
+    });
+    el.chips.appendChild(b);
+  });
+
+  /* ---------- UI ---------- */
+  function setMsg(text, kind) { el.msg.textContent = text; el.msg.className = "msg" + (kind ? " " + kind : ""); }
+  function syncFields() { el.fields.classList.toggle("off", !el.bypass.checked); }
+  el.bypass.addEventListener("change", syncFields);
+
+  function render(state) {
+    var on = String(state.ByPassSystemDate) === "true";
+    el.bypass.checked = on;
+    if (state.date) el.date.value = state.date;
+    if (state.hour) el.hour.value = state.hour;
+    syncFields();
+    el.readout.classList.toggle("sim", on);
+    if (on && state.date && state.hour) {
+      el.readoutLabel.textContent = "Las llamadas usan esta fecha y hora simuladas";
+      el.readoutValue.innerHTML = "";
+      el.readoutValue.appendChild(document.createTextNode(longDate(state.date) + " · "));
+      var t = document.createElement("span"); t.className = "time"; t.textContent = state.hour.slice(0, 5);
+      el.readoutValue.appendChild(t);
+    } else {
+      el.readoutLabel.textContent = "Las llamadas usan";
+      el.readoutValue.textContent = "La fecha y hora reales";
+    }
+    updateDayTag();
+    updateBotRead(state.lastBotRead || null);
+  }
+
+  /* ---------- API ---------- */
+  function request(method, body) {
+    return fetch(API, {
+      method: method,
+      headers: { "Content-Type": "application/json" },
+      body: body ? JSON.stringify(body) : undefined,
+      cache: "no-store"
+    }).then(function (r) {
+      return r.json().then(function (data) {
+        if (!r.ok) throw new Error(data && data.error ? data.error : "Error " + r.status);
+        return data;
+      });
+    });
+  }
+  function busy(on) { el.save.disabled = on; el.reset.disabled = on; }
+
+  el.form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var on = el.bypass.checked;
+    if (on && (!el.date.value || !el.hour.value)) { setMsg("Completa la fecha y la hora para activar la simulación.", "error"); return; }
+    var hour = el.hour.value; if (hour.length === 5) hour += ":00";
+    busy(true); setMsg("Guardando…");
+    request("POST", { ByPassSystemDate: on, date: el.date.value, hour: hour })
+      .then(function (s) { render(s); setMsg(on ? "Guardado. La próxima llamada usará esta fecha y hora." : "Guardado. La simulación está apagada.", "ok"); })
+      .catch(function (err) { setMsg("No se ha podido guardar: " + err.message, "error"); })
+      .then(function () { busy(false); });
+  });
+
+  el.reset.addEventListener("click", function () {
+    busy(true); setMsg("Restableciendo…");
+    request("POST", { reset: true })
+      .then(function (s) { render(s); setMsg("Listo. Las llamadas usan la fecha y hora reales.", "ok"); })
+      .catch(function (err) { setMsg("No se ha podido restablecer: " + err.message, "error"); })
+      .then(function () { busy(false); });
+  });
+
+/* ---------- etiqueta de día: festivo / fin de semana ---------- */
+  // Festivos nacionales de fecha fija. Edita esta lista para que coincida con la del bot.
+  var HOLIDAYS = {
+    "01-01": "Año Nuevo",
+    "01-06": "Reyes",
+    "05-01": "Día del Trabajo",
+    "08-15": "Asunción",
+    "10-12": "Fiesta Nacional",
+    "11-01": "Todos los Santos",
+    "12-06": "Día de la Constitución",
+    "12-08": "Inmaculada Concepción",
+    "12-25": "Navidad"
+  };
+  function easterSunday(y) { // algoritmo de Meeus/Jones/Butcher
+    var a = y % 19, b = Math.floor(y / 100), c = y % 100, d = Math.floor(b / 4), e = b % 4,
+        f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3),
+        h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4,
+        l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451),
+        month = Math.floor((h + l - 7 * m + 114) / 31), day = ((h + l - 7 * m + 114) % 31) + 1;
+    return y + "-" + (month < 10 ? "0" : "") + month + "-" + (day < 10 ? "0" : "") + day;
+  }
+  function holidayName(iso) {
+    if (HOLIDAYS[iso.slice(5)]) return HOLIDAYS[iso.slice(5)];
+    if (iso === addDays(easterSunday(parseInt(iso.slice(0, 4), 10)), -2)) return "Viernes Santo";
+    return null;
+  }
+  function updateDayTag() {
+    var iso = el.date.value;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) { el.dayTag.textContent = ""; return; }
+    var dow = new Date(iso + "T00:00:00Z").getUTCDay(), weekend = dow === 0 || dow === 6;
+    var holiday = holidayName(iso);
+    var weekday = new Intl.DateTimeFormat("es-ES", { weekday: "long", timeZone: "UTC" }).format(new Date(iso + "T00:00:00Z"));
+    el.dayTag.textContent = weekday.charAt(0).toUpperCase() + weekday.slice(1);
+    var badge = document.createElement("span");
+    if (holiday) { badge.className = "badge holiday"; badge.textContent = "Festivo: " + holiday + (weekend ? " (en fin de semana)" : ""); }
+    else if (weekend) { badge.className = "badge weekend"; badge.textContent = "Fin de semana"; }
+    else { badge.className = "badge"; badge.textContent = "Día laborable"; }
+    el.dayTag.appendChild(badge);
+  }
+  el.date.addEventListener("input", updateDayTag);
+  el.date.addEventListener("change", updateDayTag);
+
+  /* ---------- indicador: última lectura del bot ---------- */
+  var lastBot = null;
+  function updateBotRead(iso) {
+    if (iso !== undefined) lastBot = iso;
+    if (!lastBot) { el.botRead.textContent = "El bot todavía no ha leído la simulación."; return; }
+    var secs = Math.max(0, Math.round((Date.now() - new Date(lastBot).getTime()) / 1000)), txt;
+    if (secs < 60) txt = "hace " + secs + " s";
+    else if (secs < 3600) txt = "hace " + Math.floor(secs / 60) + " min";
+    else if (secs < 86400) txt = "hace " + Math.floor(secs / 3600) + " h";
+    else txt = "el " + new Date(lastBot).toLocaleString("es-ES", { timeZone: TZ });
+    el.botRead.textContent = "Última lectura del bot: " + txt;
+  }
+  function pollBotRead() {
+    request("GET").then(function (s) { updateBotRead(s.lastBotRead || null); }).catch(function () {});
+  }
+  setInterval(function () { updateBotRead(); }, 5000);
+  setInterval(pollBotRead, 10000);
+
+  /* ---------- inicio ---------- */
+  var now = madridNow(); el.date.value = now.date; el.hour.value = now.hour; updateDayTag();
+  request("GET")
+    .then(render)
+    .catch(function (err) {
+      el.readoutLabel.textContent = "No se ha podido leer el estado actual";
+      el.readoutValue.textContent = "Recarga la página";
+      setMsg(err.message, "error");
+    });
+})();
+</script>
+</body>
+</html>
